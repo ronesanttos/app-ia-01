@@ -1,0 +1,25 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
+  # Worker Celery (Linux): usa fila prefork. No Windows nativo, prefira:
+  #   py -m celery -A project worker -l info --pool=solo
+  celery:
+    build: .
+    command: ["celery", "-A", "project", "worker", "-l", "info"]
+    volumes:
+      - .:/app
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      - redis
+
+volumes:
+  redis_data:
+
