@@ -116,8 +116,8 @@ CORS_ALLOWED_ORIGINS = _parse_list(os.environ.get("CORS_ALLOWED_ORIGINS"))
 CSRF_TRUSTED_ORIGINS = _parse_list(os.environ.get("CSRF_TRUSTED_ORIGINS"))
 
 # Celery + Redis
-CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0")
-CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
+CELERY_BROKER_URL = os.environ.get("REDIS_URL")
+CELERY_RESULT_BACKEND = os.environ.get("REDIS_URL")
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = int(os.environ.get("CELERY_TASK_TIME_LIMIT", "300"))
 CELERY_TASK_SOFT_TIME_LIMIT = int(os.environ.get("CELERY_TASK_SOFT_TIME_LIMIT", "270"))
@@ -145,6 +145,8 @@ SESSION_COOKIE_SECURE = _parse_bool(
     os.environ.get("SESSION_COOKIE_SECURE"),
     default=not DEBUG
 )
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "default"
 
 CSRF_COOKIE_SECURE = _parse_bool(
     os.environ.get("CSRF_COOKIE_SECURE"),
@@ -174,7 +176,16 @@ DATABASES = {
         conn_max_age=600,
     )
 }
-
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": os.environ.get("REDIS_URL"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "SSL_CERT_REQS": None,
+        }
+    }
+}
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_PASSWORD_VALIDATORS = [
