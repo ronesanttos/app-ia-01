@@ -161,6 +161,7 @@ export default function ValidarPrevisao() {
                     <p>
                         Acurácia: {(resultado.acuracia * 100).toFixed(1)}%
                     </p>
+                    <p>Data da previsão: {resultado.data_previsao}</p>
                 </div>
             )}
 

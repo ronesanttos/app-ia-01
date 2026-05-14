@@ -8,6 +8,7 @@ def validar_previsao(previsao_id, numeros_reais):
     
     previstos = set(previsao.numeros_previstos)
     reais = set(numeros_reais)
+    data_previsao = previsao.criada_em
     
     acertos = len(previstos & reais)
     total = len(previstos)
@@ -23,5 +24,6 @@ def validar_previsao(previsao_id, numeros_reais):
     return {
         "acertos": acertos,
         "total": total,
-        "acuracia": taxa_acerto
+        "acuracia": taxa_acerto,
+        "data_previsao": data_previsao
     }
