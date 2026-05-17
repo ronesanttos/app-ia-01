@@ -25,6 +25,10 @@ from django.conf import settings
 
 from .auth import APIKeyAuthentication
 from .tasks import gerar_previsao_ml_task
+from django.http import JsonResponse
+
+def health(request):
+    return JsonResponse({"status": "ok"})
 
 logger = logging.getLogger(__name__)
 
