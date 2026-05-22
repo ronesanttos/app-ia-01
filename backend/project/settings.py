@@ -116,22 +116,30 @@ WSGI_APPLICATION = 'project.wsgi.application'
 CORS_ALLOWED_ORIGINS = _parse_list(os.environ.get("CORS_ALLOWED_ORIGINS"))
 CSRF_TRUSTED_ORIGINS = _parse_list(os.environ.get("CSRF_TRUSTED_ORIGINS"))
 
-# Celery + Redis
-CELERY_BROKER_URL = os.environ.get("REDIS_URL")
-CELERY_RESULT_BACKEND = os.environ.get("REDIS_URL")
-CELERY_BROKER_USE_SSL = {
-    "ssl_cert_reqs": ssl.CERT_NONE
-}
+# Celery + Redis - OTIMIZADO para evitar auto-consumo
+# Render fornece REDIS_URL; em dev local, use variável de ambiente ou padrão local
+REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
-CELERY_REDIS_BACKEND_USE_SSL = {
-    "ssl_cert_reqs": ssl.CERT_NONE
-}
-CELERY_TASK_TRACK_STARTED = True
+CELERY_BROKER_URL = REDIS_URL
+# ⚠️ REMOVIDO: CELERY_RESULT_BACKEND - Tasks são fire-and-forget (não precisa guardar resultado)
+CELERY_RESULT_BACKEND = None  # Não armazena resultados no Redis (evita auto-consumo)
+
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "America/Sao_Paulo"
+
+# ⚠️ DESATIVADO: CELERY_TASK_TRACK_STARTED - Evita overhead de rastreamento
+CELERY_TASK_TRACK_STARTED = False  # Não tracked no Redis
+
 CELERY_TASK_TIME_LIMIT = int(os.environ.get("CELERY_TASK_TIME_LIMIT", "300"))
 CELERY_TASK_SOFT_TIME_LIMIT = int(os.environ.get("CELERY_TASK_SOFT_TIME_LIMIT", "270"))
-# Timeout curto na conexão inicial (útil para fail-fast no app web).
-CELERY_BROKER_CONNECTION_TIMEOUT = float(os.environ.get("CELERY_BROKER_CONNECTION_TIMEOUT", "2.0"))
-# Worker: permitir reconexão ao Redis (evita o worker morrer em micro-quedas do broker).
+
+CELERY_BROKER_CONNECTION_TIMEOUT = 5.0  # Reduzido para Render
+CELERY_BROKER_HEARTBEAT = 30  # Heartbeat para detectar conexões mortas
+CELERY_BROKER_POOL_LIMIT = 10  # Limitar pool de conexões
+
+# Retry settings otimizados
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = _parse_bool(
     os.environ.get("CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP"), default=True
 )
@@ -139,9 +147,17 @@ CELERY_BROKER_CONNECTION_RETRY = _parse_bool(
     os.environ.get("CELERY_BROKER_CONNECTION_RETRY"), default=True
 )
 CELERY_BROKER_CONNECTION_MAX_RETRIES = int(os.environ.get("CELERY_BROKER_CONNECTION_MAX_RETRIES", "100"))
+
+# Transport options otimizados
 CELERY_BROKER_TRANSPORT_OPTIONS = {
-    "socket_connect_timeout": float(os.environ.get("CELERY_SOCKET_CONNECT_TIMEOUT", "2.0")),
-    "socket_timeout": float(os.environ.get("CELERY_SOCKET_TIMEOUT", "5.0")),
+    "socket_connect_timeout": 5.0,
+    "socket_timeout": 10.0,
+    "visibility_timeout": 3600,  # Task timeout visibility
+}
+
+# SSL para Render/produção
+CELERY_BROKER_USE_SSL = {
+    "ssl_cert_reqs": ssl.CERT_NONE
 }
 
 SECURE_SSL_REDIRECT = _parse_bool(
@@ -175,8 +191,7 @@ LOGGING = {
         'level': os.environ.get('DJANGO_LOG_LEVEL', 'INFO'),
     },
 }
-# Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+
 
 DATABASES = {
     "default": dj_database_url.config(
@@ -187,15 +202,19 @@ DATABASES = {
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": os.environ.get("REDIS_URL"),
+        "LOCATION": REDIS_URL,
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
             "SSL_CERT_REQS": None,
-        }
+            "SOCKET_CONNECT_TIMEOUT": 5,
+            "SOCKET_TIMEOUT": 5,
+            "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
+        },
+        "KEY_PREFIX": "cache",
+        "TIMEOUT": 300,
     }
 }
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -223,9 +242,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
