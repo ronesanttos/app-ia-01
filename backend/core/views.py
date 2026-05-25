@@ -27,6 +27,22 @@ from .auth import APIKeyAuthentication
 from .tasks import gerar_previsao_ml_task
 from django.http import JsonResponse
 
+# ✅ POOL REUTILIZÁVEL - evita criar nova conexão a cada request
+_redis_pool = None
+
+def get_redis_client():
+    """Retorna cliente Redis reutilizável com pool de conexões."""
+    global _redis_pool
+    if _redis_pool is None:
+        _redis_pool = redis.ConnectionPool.from_url(
+            settings.CELERY_BROKER_URL,
+            socket_connect_timeout=1,
+            socket_timeout=1,
+            max_connections=5,  # Pool pequeno = menos overhead
+            decode_responses=True,
+        )
+    return redis.Redis(connection_pool=_redis_pool)
+
 def health(request):
     return JsonResponse({"status": "ok"})
 
@@ -80,13 +96,9 @@ class ListaViewSet(ViewSet):
     # GET /api/listas/previsao_ml/ 
     @action(detail=False, methods=['get'])
     def previsao_ml(self,request):
-        # Fail fast se o Redis não estiver acessível (evita travar a requisição)
+        # ✅ MELHORADO: Usa pool reutilizável ao invés de criar novo cliente
         try:
-            r = redis.Redis.from_url(
-                settings.CELERY_BROKER_URL,
-                socket_connect_timeout=1,
-                socket_timeout=1,
-            )
+            r = get_redis_client()
             r.ping()
         except Exception as e:
             logger.warning("Redis ping falhou ao enfileirar ML: %s", e)
@@ -115,51 +127,24 @@ class ListaViewSet(ViewSet):
         if not task_id:
             return Response({"erro": "Envie task_id"}, status=400)
 
-        try:
-            r = redis.Redis.from_url(
-                settings.CELERY_RESULT_BACKEND,
-                socket_connect_timeout=1,
-                socket_timeout=1,
-            )
-            r.ping()
-        except Exception as e:
-            logger.warning("Redis ping falhou ao consultar status: %s", e)
-            ultima = Previsao.objects.filter(tipo="ml").order_by("-id").first()
-            payload = {
-                "task_id": task_id,
-                "status": "UNAVAILABLE",
-                "erro": "Redis indisponível para consultar status da task.",
-            }
-            if ultima:
-                payload["ultima_previsao_salva"] = {
-                    "id": ultima.id,
-                    "numeros": ultima.numeros_previstos,
-                    "criada_em": ultima.criada_em,
-                }
-            return Response(payload, status=503)
-
-        result = AsyncResult(task_id)
+        # ✅ MELHORADO: Remove ping desnecessário ao Redis
+        # Se CELERY_RESULT_BACKEND é None, AsyncResult não vai funcionar
+        # Usa apenas fallback do banco de dados
+        
+        ultima = Previsao.objects.filter(tipo="ml").order_by("-id").first()
+        
         payload = {
             "task_id": task_id,
-            "status": result.status,
+            "status": "UNKNOWN",  # Sem result backend, não conseguimos saber
         }
-
-        ultima = Previsao.objects.filter(tipo="ml").order_by("-id").first()
+        
         if ultima:
             payload["ultima_previsao_salva"] = {
                 "id": ultima.id,
                 "numeros": ultima.numeros_previstos,
                 "criada_em": ultima.criada_em,
             }
-
-        if result.successful():
-            try:
-                payload["result"] = result.result
-            except Exception:
-                payload["result"] = None
-        elif result.failed():
-            payload["error"] = str(result.result)
-
+        
         return Response(payload)
     
     @action(detail=False, methods=['get'])

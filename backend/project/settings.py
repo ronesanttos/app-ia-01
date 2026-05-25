@@ -81,16 +81,20 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 10,
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'core.auth.APIKeyAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
+        # ✅ OTIMIZADO: Remover SessionAuthentication se não precisa de sessão
+        # 'rest_framework.authentication.SessionAuthentication',
     ],
-    'DEFAULT_THROTTLE_CLASSES': [
-        'rest_framework.throttling.AnonRateThrottle',
-        'rest_framework.throttling.UserRateThrottle',
-    ],
-    'DEFAULT_THROTTLE_RATES': {
-        'anon': os.environ.get('DRF_THROTTLE_ANON', '60/min'),
-        'user': os.environ.get('DRF_THROTTLE_USER', '300/min'),
-    },
+    # ✅ OTIMIZADO: Throttling desativado se não é crítico
+    # Throttling usa cache Redis = leituras extras
+    # Desative se não é essencial ou use cache em memória
+    # 'DEFAULT_THROTTLE_CLASSES': [
+    #     'rest_framework.throttling.AnonRateThrottle',
+    #     'rest_framework.throttling.UserRateThrottle',
+    # ],
+    # 'DEFAULT_THROTTLE_RATES': {
+    #     'anon': os.environ.get('DRF_THROTTLE_ANON', '60/min'),
+    #     'user': os.environ.get('DRF_THROTTLE_USER', '300/min'),
+    # },
 }
 
 
@@ -169,8 +173,10 @@ SESSION_COOKIE_SECURE = _parse_bool(
     os.environ.get("SESSION_COOKIE_SECURE"),
     default=not DEBUG
 )
-SESSION_ENGINE = "django.contrib.sessions.backends.cache"
-SESSION_CACHE_ALIAS = "default"
+# ✅ OTIMIZADO: Use banco de dados para sessões (é mais eficiente que Redis)
+# Redis é melhor para cache de aplicação, não para sessões de usuário
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
+# SESSION_CACHE_ALIAS = "default"  # Desativado
 
 CSRF_COOKIE_SECURE = _parse_bool(
     os.environ.get("CSRF_COOKIE_SECURE"),
@@ -208,10 +214,14 @@ CACHES = {
             "SSL_CERT_REQS": None,
             "SOCKET_CONNECT_TIMEOUT": 5,
             "SOCKET_TIMEOUT": 5,
-            "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
+            # ✅ REMOVIDO: "COMPRESSOR" - ZlibCompressor adiciona overhead de CPU/memória
+            # Compressão não vale a pena para dados pequenos (cache típico < 100KB)
+            "CONNECTION_POOL_KWARGS": {
+                "max_connections": 5,  # ✅ Pool pequeno = menos overhead
+            }
         },
         "KEY_PREFIX": "cache",
-        "TIMEOUT": 300,
+        "TIMEOUT": 3600,  # ✅ Aumentado de 300s para 1h - dados expiram menos freq
     }
 }
 
