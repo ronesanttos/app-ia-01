@@ -30,6 +30,14 @@ from django.http import JsonResponse
 # ✅ POOL REUTILIZÁVEL - evita criar nova conexão a cada request
 _redis_pool = None
 
+def redis_test(request):
+    try:
+        r = redis.Redis.from_url(settings.CELERY_BROKER_URL)
+        r.ping()
+        return JsonResponse({"status": "ok"})
+    except Exception as e:
+        return JsonResponse({"erro": str(e)})
+    
 def get_redis_client():
     """Retorna cliente Redis reutilizável com pool de conexões."""
     global _redis_pool

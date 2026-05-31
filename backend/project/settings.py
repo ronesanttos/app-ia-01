@@ -122,9 +122,12 @@ CSRF_TRUSTED_ORIGINS = _parse_list(os.environ.get("CSRF_TRUSTED_ORIGINS"))
 
 # Celery + Redis - OTIMIZADO para evitar auto-consumo
 # Render fornece REDIS_URL; em dev local, use variável de ambiente ou padrão local
-REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+CELERY_BROKER_URL = os.environ.get(
+    "CELERY_BROKER_URL",
+    "redis://localhost:6379/0"
+)
 
-CELERY_BROKER_URL = REDIS_URL
+REDIS_URL = CELERY_BROKER_URL
 # ⚠️ REMOVIDO: CELERY_RESULT_BACKEND - Tasks são fire-and-forget (não precisa guardar resultado)
 CELERY_RESULT_BACKEND = None  # Não armazena resultados no Redis (evita auto-consumo)
 
