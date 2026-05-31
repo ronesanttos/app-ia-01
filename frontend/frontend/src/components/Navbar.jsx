@@ -12,6 +12,7 @@ export default function Navbar() {
         <Link to="/previsao">Previsão</Link>
         <Link to="/validar">Validar</Link>
         <Link to="/metricas">Métricas</Link>
+        <Link to="/ultimo-sorteio">Último sorteio</Link>
       </div>
     </nav>
   );

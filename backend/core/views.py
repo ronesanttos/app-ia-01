@@ -222,6 +222,33 @@ class ListaViewSet(ViewSet):
         )
 
     @action(detail=False, methods=['get'])
+    def ultimo_sorteio_por_numero(self, request):
+        """
+        Retorna os numeros de 0 a 99 com a data da ultima vez que apareceram em uma lista.
+        """
+        numeros_ultimo = {numero: None for numero in range(100)}
+
+        rows = Lista.objects.order_by("-criada_em").values_list("numeros", "criada_em")
+        for numeros, criada_em in rows:
+            for numero in numeros:
+                if isinstance(numero, int) and 0 <= numero < 100:
+                    if numeros_ultimo[numero] is None:
+                        numeros_ultimo[numero] = criada_em
+
+            if all(value is not None for value in numeros_ultimo.values()):
+                break
+
+        payload = [
+            {
+                "numero": numero,
+                "ultima_sorteado_em": numeros_ultimo[numero],
+            }
+            for numero in range(100)
+        ]
+
+        return Response(payload)
+
+    @action(detail=False, methods=['get'])
     def metricas(self,request):
        return Response(obter_metricas())
 
@@ -268,4 +295,3 @@ class ListaViewSet(ViewSet):
     
     
     
-  

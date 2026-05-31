@@ -4,10 +4,11 @@ import Navbar from "./components/Navbar";
 
 import Dashboard from "./pages/Dashboard";
 import Historico from "./pages/Historico";
-import Previsao from "./pages/Previsao"
+import Previsao from "./pages/Previsao";
 import AdicionarDados from "./pages/AdiconarDados";
 import Metricas from "./pages/Metricas";
 import ValidarPrevisao from "./pages/validarPrevisao";
+import UltimoSorteio from "./pages/UltimoSorteio";
 
 function App() {
   
@@ -22,6 +23,7 @@ function App() {
           <Route path="/previsao" element={<Previsao />} />
           <Route path="/validar" element={<ValidarPrevisao/>} />
           <Route path="/metricas" element={<Metricas/>} />
+          <Route path="/ultimo-sorteio" element={<UltimoSorteio/>} />
         </Routes>
       </main>
     </>
