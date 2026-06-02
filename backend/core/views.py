@@ -13,6 +13,7 @@ from .utils import normalizar_listas
 
 from django.core.cache import cache
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from rest_framework.viewsets import ViewSet #type:ignore
 from rest_framework.response import Response#type:ignore
 from rest_framework import status#type:ignore
@@ -135,24 +136,29 @@ class ListaViewSet(ViewSet):
         if not task_id:
             return Response({"erro": "Envie task_id"}, status=400)
 
-        # ✅ MELHORADO: Remove ping desnecessário ao Redis
-        # Se CELERY_RESULT_BACKEND é None, AsyncResult não vai funcionar
-        # Usa apenas fallback do banco de dados
-        
         ultima = Previsao.objects.filter(tipo="ml").order_by("-id").first()
-        
+        task_started_at = cache.get("ml_last_task_started_at")
+        task_cached_id = cache.get("ml_last_task_id")
+
         payload = {
             "task_id": task_id,
-            "status": "UNKNOWN",  # Sem result backend, não conseguimos saber
+            "status": "UNKNOWN",
         }
-        
+
         if ultima:
             payload["ultima_previsao_salva"] = {
                 "id": ultima.id,
                 "numeros": ultima.numeros_previstos,
                 "criada_em": ultima.criada_em,
             }
-        
+
+            if task_id == task_cached_id and task_started_at:
+                started_at = parse_datetime(task_started_at)
+                if started_at is not None and ultima.criada_em >= started_at:
+                    payload["status"] = "SUCCESS"
+                else:
+                    payload["status"] = "PROCESSANDO"
+
         return Response(payload)
     
     @action(detail=False, methods=['get'])
