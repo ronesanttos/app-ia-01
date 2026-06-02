@@ -163,9 +163,7 @@ CELERY_BROKER_TRANSPORT_OPTIONS = {
 }
 
 # SSL para Render/produção
-#CELERY_BROKER_USE_SSL = {
-   # "ssl_cert_reqs": ssl.CERT_NONE
-#}
+CELERY_BROKER_USE_SSL = None
 
 SECURE_SSL_REDIRECT = _parse_bool(
     os.environ.get("SECURE_SSL_REDIRECT"),
