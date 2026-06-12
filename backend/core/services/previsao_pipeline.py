@@ -98,3 +98,40 @@ def gerar_previsao_ml_pipeline(listas, salvar=True):
 
 
 
+
+def gerar_previsao_heuristica_pipeline_15(listas, salvar=True):
+    listas_calc = deduplicar_listas(listas)
+    resultado = prever_inteligente_v2(listas_calc,tamanho_lista=15)
+    
+    if "previsao" not in resultado: 
+        return {
+            "success": False,
+            "erro": resultado.get("erro","Erro desconhecido")
+            }
+    
+    previsao = resultado["previsao"]
+    
+    if not previsao:
+        return {
+            "erro": "Previsão vazia"
+            }
+    
+    if previsao_recente("heuristica", previsao):
+        return {
+            "status": "duplicado_recente",
+            "previsao": previsao
+        }
+        
+    if salvar:
+        Previsao.objects.create(
+            tipo="heuristica",
+            numeros_previstos=previsao
+        )
+    
+    return {
+        "success": True,
+        "status": "ok",
+        "data": {
+            "previsao": previsao
+        }
+    }

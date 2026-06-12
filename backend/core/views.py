@@ -2,7 +2,7 @@ from .models import Lista, Resultado, Previsao
 from .serializers import ListaInputSerializer, ValidarPrevisaoSerializer
 
 from .services.analise_service import processar_listas
-from .services.previsao_pipeline import gerar_previsao_heuristica_pipeline, gerar_previsao_ml_pipeline
+from .services.previsao_pipeline import gerar_previsao_heuristica_pipeline, gerar_previsao_ml_pipeline,gerar_previsao_heuristica_pipeline_15
 from .services.previsao_service import prever_com_aprendizado
 from .services.ml_service import rodar_ml_em_background
 from .services.validacao_service import validar_previsao
@@ -90,7 +90,16 @@ class ListaViewSet(ViewSet):
         resultado = gerar_previsao_heuristica_pipeline(listas,salvar=False)  
         
         return Response(resultado)
-    
+    @action(detail=False, methods=['get'])
+    def previsao_15(self,request):
+        listas = list(
+            Lista.objects.order_by('-id')
+            .values_list('numeros',flat=True)[:100]
+        )
+
+        resultado = gerar_previsao_heuristica_pipeline_15(listas,salvar=False)  
+        
+        return Response(resultado)
     @action(detail=False, methods=['post'])
     def gerar_previsao(self, request):
         listas = list(
@@ -99,6 +108,18 @@ class ListaViewSet(ViewSet):
         )
 
         resultado = gerar_previsao_heuristica_pipeline(listas,salvar=True)
+        
+        return Response(resultado)
+    
+    
+    @action(detail=False, methods=['post'])
+    def gerar_previsao_15(self, request):
+        listas = list(
+            Lista.objects.order_by('-id')
+            .values_list('numeros', flat=True)[:100]
+        )
+
+        resultado = gerar_previsao_heuristica_pipeline_15(listas,salvar=True)
         
         return Response(resultado)
     
@@ -136,6 +157,10 @@ class ListaViewSet(ViewSet):
         if not task_id:
             return Response({"erro": "Envie task_id"}, status=400)
 
+        # ✅ MELHORADO: Remove ping desnecessário ao Redis
+        # Se CELERY_RESULT_BACKEND é None, AsyncResult não vai funcionar
+        # Usa apenas fallback do banco de dados
+        
         ultima = Previsao.objects.filter(tipo="ml").order_by("-id").first()
         task_started_at = cache.get("ml_last_task_started_at")
         task_cached_id = cache.get("ml_last_task_id")

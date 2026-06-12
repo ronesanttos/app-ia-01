@@ -5,6 +5,7 @@ import { apiFetch, readApiError } from "../api/client.js";
 export default function Previsao() {
     const [heuristica, setHeuristica] = useState(null)
     const [aprendizado, setAprendizado] = useState(null)
+    const [heuristica_15, setHeuristica_15] = useState(null)
 
     const [mlRodando, setMlRodando] = useState(false)
     const [previsoes, setPrevisoes] = useState([])
@@ -17,20 +18,22 @@ export default function Previsao() {
         setErro("");
 
         try {
-            const [resAp, resHeu] = await Promise.all([
+            const [resAp, resHeu, resHeu_15] = await Promise.all([
                 apiFetch(`/api/listas/previsao_aprendizado/`),
-                apiFetch(`/api/listas/previsao/`)
+                apiFetch(`/api/listas/previsao/`),
+                apiFetch(`/api/listas/previsao_15/`)
             ]);
 
-            if (!resAp.ok || !resHeu.ok) {
+            if (!resAp.ok || !resHeu.ok || !resHeu_15.ok) {
                 throw new Error("Erro ao buscar previsões");
             }
 
             const dataAp = await resAp.json();
             const dataHeu = await resHeu.json();
-
+            const dataHeu_15 = await resHeu.json();
             setAprendizado(dataAp);
             setHeuristica(dataHeu);
+            setHeuristica_15(dataHeu_15)
 
             setMsg({ texto: "Previsão atualizada!", tipo: "success" });
         }
@@ -69,7 +72,31 @@ export default function Previsao() {
             setLoading(false)
         }
     }
+    async function gerarPrevisao_15() {
+        try {
+            setLoading(true)
+            const res = await apiFetch(`/api/listas/gerar_previsao_15/`, {
+                method: "POST"
+            });
 
+            const data = await res.json()
+
+            if (data.status === "ok") {
+                setMsg({ texto: "Salvo com sucesso!", tipo: "success" });
+            } else if (data.status === "duplicado_recente") {
+                setMsg({ texto: "Previsão já gerada recentemente", tipo: "erro" });
+            } else {
+                setMsg({ texto: "Erro inesperado", tipo: "erro" });
+            }
+            await buscarPrevisoes();
+
+        } catch (err) {
+            setErro("Erro ao gerar previsao")
+            console.error(err)
+        } finally {
+            setLoading(false)
+        }
+    }
     async function iniciarML() {
         try {
             setMlRodando(true);
@@ -189,6 +216,9 @@ export default function Previsao() {
                 <button type="button" className="btn" onClick={gerarPrevisao} disabled={loading}>
                     Gerar heurística
                 </button>
+                <button type="button" className="btn" onClick={gerarPrevisao_15} disabled={loading}>
+                    Gerar heurística com 15 numeros
+                </button>
                 <button type="button" className="btn btn-primary" onClick={iniciarML} disabled={mlRodando}>
                     Rodar IA (ML)
                 </button>
@@ -203,7 +233,10 @@ export default function Previsao() {
                 titulo="Previsão com Heurística"
                 dados={heuristica}
             />
-
+            <BlocoPrevisao
+                titulo="Previsão com Heurística"
+                dados={heuristica_15}
+            />
             {loading && <p className="loading-block">Carregando…</p>}
             {erro && <div className="alert alert-error" role="alert">{erro}</div>}
 
