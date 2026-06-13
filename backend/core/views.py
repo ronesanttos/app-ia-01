@@ -80,48 +80,53 @@ class ListaViewSet(ViewSet):
 
 
     # GET /api/listas/previsao/  retorna 1 previsao
-    @action(detail=False, methods=['get'])
-    def previsao(self,request):
-        listas = list(
+    def _obter_listas(self):
+        return list(
             Lista.objects.order_by('-id')
-            .values_list('numeros',flat=True)[:100]
+            .values_list('numeros', flat=True)[:100]
         )
 
-        resultado = gerar_previsao_heuristica_pipeline(listas,salvar=False)  
-        
-        return Response(resultado)
-    @action(detail=False, methods=['get'])
-    def previsao_15(self,request):
-        listas = list(
-            Lista.objects.order_by('-id')
-            .values_list('numeros',flat=True)[:100]
+    def _executar_previsao(self, pipeline, salvar):
+        return pipeline(
+            self._obter_listas(),
+            salvar=salvar
         )
 
-        resultado = gerar_previsao_heuristica_pipeline_15(listas,salvar=False)  
-        
-        return Response(resultado)
+    @action(detail=False, methods=['get'])
+    def previsao(self, request):
+        return Response(
+            self._executar_previsao(
+                gerar_previsao_heuristica_pipeline,
+                salvar=False
+            )
+        )
+
+    @action(detail=False, methods=['get'])
+    def previsao_15(self, request):
+        return Response(
+            self._executar_previsao(
+                gerar_previsao_heuristica_pipeline_15,
+                salvar=False
+            )
+        )
+
     @action(detail=False, methods=['post'])
     def gerar_previsao(self, request):
-        listas = list(
-            Lista.objects.order_by('-id')
-            .values_list('numeros', flat=True)[:100]
+        return Response(
+            self._executar_previsao(
+                gerar_previsao_heuristica_pipeline,
+                salvar=True
+            )
         )
 
-        resultado = gerar_previsao_heuristica_pipeline(listas,salvar=True)
-        
-        return Response(resultado)
-    
-    
     @action(detail=False, methods=['post'])
     def gerar_previsao_15(self, request):
-        listas = list(
-            Lista.objects.order_by('-id')
-            .values_list('numeros', flat=True)[:100]
+        return Response(
+            self._executar_previsao(
+                gerar_previsao_heuristica_pipeline_15,
+                salvar=True
+            )
         )
-
-        resultado = gerar_previsao_heuristica_pipeline_15(listas,salvar=True)
-        
-        return Response(resultado)
     
     # GET /api/listas/previsao_ml/ 
     @action(detail=False, methods=['get'])
