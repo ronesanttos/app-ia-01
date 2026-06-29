@@ -42,3 +42,5 @@ def listar_historico(page=1,limit=10, tipo=None, ordenar_por="acuracia"):
             for p in previsoes
         ]
     }
+    
+    
