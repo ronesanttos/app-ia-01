@@ -47,7 +47,7 @@ export default function Previsao() {
         }
     }
 
-    async function gerarPrevisao(endpoint) {
+    async function gerarPrevisao(endpoint = "/api/listas/gerar_previsao/") {
         try {
             setLoading(true);
 
@@ -192,7 +192,7 @@ export default function Previsao() {
                     Atualizar
                 </button>
 
-                <button type="button" className="btn" onClick={gerarPrevisao} disabled={loading}>
+                <button type="button" className="btn" onClick={() => gerarPrevisao()} disabled={loading}>
                     Gerar heurística
                 </button>
                 <button type="button" className="btn" onClick={() => gerarPrevisao("/api/listas/gerar_previsao_15/")} disabled={loading}>

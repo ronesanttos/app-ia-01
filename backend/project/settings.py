@@ -127,8 +127,10 @@ CELERY_BROKER_URL = os.environ.get(
 )
 
 REDIS_URL = CELERY_BROKER_URL
-# ⚠️ REMOVIDO: CELERY_RESULT_BACKEND - Tasks são fire-and-forget (não precisa guardar resultado)
-CELERY_RESULT_BACKEND = None  # Não armazena resultados no Redis (evita auto-consumo)
+CELERY_RESULT_BACKEND = os.environ.get(
+    "CELERY_RESULT_BACKEND",
+    REDIS_URL
+)
 
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
